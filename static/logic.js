@@ -1,4 +1,4 @@
-// Capture user's webcam video
+// DOM Elements
 const videoElement = document.getElementById('videoElement');
 const analyzeButton = document.getElementById('analyzeButton');
 const recordAudioButton = document.getElementById('recordAudioButton');
@@ -8,19 +8,51 @@ const analysisResult = document.getElementById('analysisResult');
 console.log("Webcam and audio capture script initialized.");
 
 // Access the webcam stream
-navigator.mediaDevices.getUserMedia({ video: true })
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then(stream => {
         videoElement.srcObject = stream;
+        const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = stream.getAudioTracks()[0];
+
+        // WebSocket connection for real-time analysis
+        const socket = io.connect('http://localhost:5000');  // WebSocket connection to Flask-SocketIO
+
+        // Capture video and audio every second and send it through WebSocket
+        setInterval(() => {
+            // Create a canvas to extract a video frame
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+            // Convert the canvas to base64 image data
+            const videoFrameData = canvas.toDataURL('image/jpeg').split(',')[1];  // Base64 encoded image
+
+            // Capture audio data (placeholder, since full implementation depends on streaming format)
+            const audioData = null;  // Placeholder, replace with actual audio stream capture method
+
+            // Send video and audio data through WebSocket
+            socket.emit('video_audio_stream', {
+                video_frame: videoFrameData,
+                audio_data: audioData  // Replace with audio capture
+            });
+        }, 1000);  // Send every second
+
+        // Listen for the response from the server
+        socket.on('response', (data) => {
+            analysisResult.innerHTML = `Posture: ${data.posture}, Facial Expression: ${data.facial_expression}, Transcription: ${data.transcription}, Confidence: ${data.confidence_level}`;
+        });
     })
     .catch(error => {
-        console.error('Error accessing webcam:', error);
+        console.error('Error accessing webcam or microphone:', error);
     });
 
-// Capture video and send to the server for analysis
+// Capture video and send to the server for HTTP-based analysis
 analyzeButton.addEventListener('click', () => {
     // Pause the video to capture the current frame
     videoElement.pause();
-    
+
     // Create a canvas to draw the video frame
     const canvas = document.createElement('canvas');
     canvas.width = videoElement.videoWidth;
@@ -28,7 +60,7 @@ analyzeButton.addEventListener('click', () => {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-    // Convert canvas to Blob (image) and send for analysis
+    // Convert canvas to Blob (image) and send for HTTP analysis
     canvas.toBlob(blob => {
         const formData = new FormData();
         formData.append('video', blob, 'video.mp4');
@@ -54,7 +86,7 @@ analyzeButton.addEventListener('click', () => {
     });
 });
 
-// Record and analyze audio
+// Record and analyze audio using HTTP request
 recordAudioButton.addEventListener('click', () => {
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
