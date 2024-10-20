@@ -1,82 +1,140 @@
 from flask import Flask, render_template, request, jsonify
+import os
+from deepface import DeepFace
 import cv2
-import mediapipe as mp
-import speech_recognition as sr
+import torch
+import torch.nn as nn   
+import librosa
+import numpy as np
 
 app = Flask(__name__)
 
-# Initialize mediapipe for posture and face detection
-mp_pose = mp.solutions.pose
-mp_face_detection = mp.solutions.face_detection
+class EmotionCNN(nn.Module):
+    def __init__(self):
+        super(EmotionCNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+        self.fc1 = nn.Linear(64 * 10 * 25, 128)
+        self.fc2 = nn.Linear(128, 7)
+        self.dropout = nn.Dropout(p=0.5)
 
-
-# Route to render the homepage
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        x = x.reshape(x.size(0), -1)
+        x = self.dropout(torch.relu(self.fc1(x)))
+        x = self.fc2(x)
+        return x
+model=EmotionCNN()
 @app.route('/')
-def index():
-    return render_template("index.html")
+def home():
+    return render_template('index.html')
+@app.route('/interview')
+def interview():
+    return render_template('interview.html')
 
+@app.route('/interview', methods=['POST'])
+def handle_interview():
+    if 'interview_recording' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No video data received'}), 400
+    
+    recording = request.files['interview_recording']
+    temp_file_path = os.path.join("uploads", recording.filename)
+    recording.save(temp_file_path)
 
-# Analyze video data (ML for posture and facial expressions)
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    # Retrieve the video file from the request
-    video_file = request.files.get('video')
+    expression_list = []
 
-    # Convert video file to an OpenCV readable format
-    cap = cv2.VideoCapture(video_file)
-
-    with mp_pose.Pose() as pose, mp_face_detection.FaceDetection() as face_detection:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Analyze the frame for posture and facial expression
-            results = pose.process(frame)
-            face_results = face_detection.process(frame)
-
-            # Process analysis results and return (dummy data for example)
-            if results.pose_landmarks:
-                analysis_result = {
-                    "posture": "Good",
-                    "facial_expression": "Neutral"
-                }
+    def analyze_frame(frame):
+        try:
+            result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+            if isinstance(result, list):
+                dominant_emotion = result[0]['dominant_emotion']
             else:
-                analysis_result = {
-                    "posture": "Bad",
-                    "facial_expression": "Nervous"
-                }
+                dominant_emotion = result['dominant_emotion']
+            expression_list.append(dominant_emotion)
+        except Exception as e:
+            print("Error analyzing frame: ", e)
 
-            cap.release()
-            return jsonify(analysis_result)
+    cap = cv2.VideoCapture(temp_file_path)
+    
+    if not cap.isOpened():
+        return jsonify({'status': 'error', 'message': 'Failed to open video'}), 400
 
-    return jsonify({"error": "Failed to analyze video"})
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        analyze_frame(frame_rgb)
 
-# Analyze audio data (ML for speech features like pitch and amplitude)
-@app.route('/analyze-audio', methods=['POST'])
-def analyze_audio():
-    audio_file = request.files.get('audio')
+    cap.release()
+    os.remove(temp_file_path)
 
-    recognizer = sr.Recognizer()
+    if not expression_list:
+        return jsonify({"status": "error", "message": "No expressions detected"}), 400
+
+    emotion_counts = {emotion: expression_list.count(emotion) for emotion in ['happy', 'sad', 'fear', 'disgust', 'angry', 'surprise', 'neutral']}
+    total_expressions = len(expression_list)
+    percentages = {emotion: (count / total_expressions) * 100 for emotion, count in emotion_counts.items()}
+    dominant_expr = max(percentages, key=percentages.get)
+
+    return jsonify({
+        "dominant_emotion": dominant_expr,
+        "percentages": percentages
+    })
+@app.route('/interview/audio', methods=['POST'])
+def handle_audio_snippet():
+    if 'audio_recording' not in request.files:
+        print("Error: No audio file part in the request")
+        return jsonify({'error': 'No audio file part in the request'}), 400
+    
+    file = request.files['audio_recording']
+    
+    if file.filename == '':
+        print("Error: No selected audio file")
+        return jsonify({'error': 'No selected audio file'}), 400
+
     try:
-        with sr.AudioFile(audio_file) as source:
-            audio = recognizer.record(source)
+        # Load audio file
+        audio_data, sr = librosa.load(file, sr=None)
+        print("Loaded audio data with sample rate:", sr)
+        print("Audio data length:", len(audio_data))
 
-            # Speech to text conversion
-            text = recognizer.recognize_google(audio)
+        # Process audio in chunks of 5 seconds
+        duration = 5  # seconds
+        mfcc_features = []
 
-            # Dummy confidence analysis (You can integrate pitch and amplitude analysis here)
-            confidence_level = "High" if "confident" in text.lower() else "Low"
+        for start in range(0, len(audio_data), duration * sr):
+            end = start + (duration * sr)
+            chunk = audio_data[start:end]
+            
+            if len(chunk) < duration * sr:
+                continue  # Skip if the last chunk is not long enough
 
-            return jsonify({
-                "transcription": text,
-                "confidence_level": confidence_level
-            })
-    except sr.UnknownValueError:
-        return jsonify({"error": "Speech recognition could not understand the audio"})
+            # Extract MFCC features
+            mfcc = librosa.feature.mfcc(y=chunk, sr=sr, n_mfcc=13)
+            mfcc_mean = np.mean(mfcc, axis=1)
+            mfcc_input = torch.tensor(mfcc_mean, dtype=torch.float32).unsqueeze(0)  # Shape (1, n_mfcc)
+            mfcc_features.append(mfcc_input)
 
+        if mfcc_features:
+            mfcc_features = torch.cat(mfcc_features)  # Shape (batch_size, n_mfcc)
+            with torch.no_grad():
+                predictions = model(mfcc_features)
+            predicted_classes = torch.argmax(predictions, dim=1).tolist()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+            print("Predictions:", predicted_classes)
+            return jsonify({'predictions': predicted_classes}), 200
+        else:
+            print("No valid audio chunks processed")
+            return jsonify({'message': 'No valid audio chunks processed'}), 400
+    except Exception as e:
+        print("An error occurred:", str(e))
+        return jsonify({'error': 'An error occurred while processing audio: {}'.format(str(e))}), 500
 
+if __name__ == '__main__':
+    if not os.path.exists("uploads"):
+        os.makedirs("uploads")  # Create an uploads directory to store temporary video files
+    app.run(debug=True)

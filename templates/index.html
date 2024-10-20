@@ -1,24 +1,73 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Communication Skills Analysis</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://kit.fontawesome.com/efd35c9483.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='/css/style.css') }}">
+    <title>Prep with ML</title>
 </head>
 <body>
-    <h1>Communication Skills Development</h1>
+    <nav>
+        <div class="nav-left">
+            <!-- <span class="material-symbols-outlined">
+                deployed_code
+            </span> -->
+            <img src="{{ url_for('static', filename='./images/logo.svg') }}" alt="logo here">
+            <div id="product-name">Interview wallah</div>
+        </div>
+        
+        <ul class="nav-right" id="nav-right">
+            <li><a href="{{ url_for('home') }}" class="nav-links">About</a></li>
+            <!-- <li><a href="#" class="nav-links">Categories</a></li> -->
+            <li><a href="{{ url_for('signup_page') }}" class="nav-links">Sign Up</a></li>
+            <li><a href="{{ url_for('signin_page') }}" class="nav-links">Log In</a></li>
+        </ul>
+
+        <!-- User nav (shown when user is logged in) -->
+        <div id="user-nav" style="display: none;">
+            <a href="#" id="about">About</a>
+
+            <div class="dropdown">
+                
+                <button class="dropbtn">
+                    <img src="{{ url_for('static', filename='./images/user.png') }}" alt="user-image" id="user-image">
+                    <span id="username"></span>
+                </button>
+                <div class="dropdown-content">
+                    <a href="#" id="logout-link">Logout</a>
+                    <a href="#" id="delete-account-button">Delete Account</a>
+                </div>
+            </div>
+                
+            
+            
+        </div>
+    </nav>
     
-    <h2>Video Analysisdmnew fn ew dk (Posture and Facial Expression)</h2>
-    <video id="videoElement" autoplay></video>
-    <button id="analyzeButton">Analyze Video</button>
-
-    <h2>Audio Analysis (Speech and Confidence)</h2>
-    <button id="recordAudioButton">Record and Analyze Audio</button>
-
-    <p id="analysisResult"></p>
-
-    <script src="{{ url_for('static', filename='logic.js') }}"></script>
+    <main>
+        <div class="left-content">
+            <div class="left-content-text">
+                <h1 id="content-heading">Your dream job is waiting. Are you interview-ready?</h1>
+                <p id="content-description">Conquer your interview jitters and land your dream job with our realistic mock interview platform.</p>
+                <button id="interview-button">Start Interview</button>
+            </div>
+          
+        </div>
+        <div class="right-content">
+          <img src="{{ url_for('static', filename='./images/interview.png') }}" alt="Interview Image" id="interview-image">
+        </div>
+    </main>
+    
+    <footer>
+        <p>Made with Love ❤️</p>
+    </footer>
+    <script type="module" src="{{ url_for('static', filename='test.mjs') }}"></script>
+    <script>
+        document.getElementById('interview-button').addEventListener('click', () => {
+            // Redirect to the interview page
+            window.location.href = "/interview";
+        });
+    </script>
 </body>
 </html>

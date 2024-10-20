@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Question Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/editor/editor.main.min.css">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">DSA Question Generator</h1>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/editor/editor.main.min.css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+        <!-- Controls -->
+        <div class="flex gap-4 mb-6 justify-center">
+            <select id="category" class="px-4 py-2 rounded border border-gray-300">
+                <option value="arrays">Arrays</option>
+                <option value="linked_lists">Linked Lists</option>
+                <option value="trees">Trees</option>
+                <option value="graphs">Graphs</option>
+            </select>
+            
+            <select id="difficulty" class="px-4 py-2 rounded border border-gray-300">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+            
+            <button onclick="generateQuestion()" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+                Generate Question
+            </button>
+        </div>
+
+        <!-- Question Display -->
+        <div id="questionContainer" class="hidden bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-2">Problem Statement</h2>
+                <div id="problemStatement" class="text-gray-700"></div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-2">Examples</h2>
+                <pre id="examples" class="bg-gray-50 p-4 rounded"></pre>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-2">Constraints</h2>
+                <pre id="constraints" class="bg-gray-50 p-4 rounded"></pre>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-2">Complexity Requirements</h2>
+                <div id="complexity" class="text-gray-700"></div>
+            </div>
+
+            <div class="mb-6">
+                <button onclick="toggleHints()" class="text-blue-500 hover:text-blue-600">
+                    Show/Hide Hints
+                </button>
+                <div id="hints" class="hidden mt-2 text-gray-700"></div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold mb-2">Test Cases</h2>
+                <div id="testCases" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Code Editor -->
+        <div id="editorContainer" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">Your Solution</h2>
+            <div id="editor" style="height: 400px; border: 1px solid #ccc;"></div>
+            <button onclick="runCode()" class="mt-4 bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+                Run Code
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script>
+        let editor;
+
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: '# Write your solution here\n',
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true
+            });
+        });
+
+        async function generateQuestion() {
+            const category = document.getElementById('category').value;
+            const difficulty = document.getElementById('difficulty').value;
+
+            const response = await fetch('/api/generate-question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ category, difficulty })
+            });
+
+            const question = await response.json();
+            displayQuestion(question);
+        }
+
+        function displayQuestion(question) {
+            document.getElementById('questionContainer').classList.remove('hidden');
+            document.getElementById('editorContainer').classList.remove('hidden');
+            
+            document.getElementById('problemStatement').textContent = question.problem_statement;
+            document.getElementById('examples').textContent = question.examples;
+            document.getElementById('constraints').textContent = question.constraints;
+            document.getElementById('complexity').textContent = question.complexity;
+            document.getElementById('hints').textContent = question.hints;
+
+            const testCasesContainer = document.getElementById('testCases');
+            testCasesContainer.innerHTML = '';
+            question.test_cases.forEach((testCase, index) => {
+                const testCaseElement = document.createElement('div');
+                testCaseElement.className = 'bg-gray-50 p-4 rounded';
+                testCaseElement.innerHTML = `
+                    <div class="font-semibold">Test Case ${index + 1}:</div>
+                    <div>Input: ${testCase.input}</div>
+                    <div>Expected Output: ${testCase.output}</div>
+                `;
+                testCasesContainer.appendChild(testCaseElement);
+            });
+        }
+
+        function toggleHints() {
+            const hintsElement = document.getElementById('hints');
+            hintsElement.classList.toggle('hidden');
+        }
+
+        function runCode() {
+            const code = editor.getValue();
+            // Implement code execution logic here
+            alert('Code execution feature coming soon!');
+        }
+    </script>
+</body>
+</html>
+
+
+
+ 

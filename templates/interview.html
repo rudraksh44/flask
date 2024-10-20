@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        .button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interview Room</h1>
+
+    <!-- Video Element -->
+    <video id="video" autoplay></video>
+
+    <!-- Control buttons for video/audio -->
+    <div id="controls">
+        <button id="toggle-video" class="button">Turn Video Off</button>
+        <button id="toggle-audio" class="button">Turn Audio Off</button>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('video');
+        let videoStream, audioStream, mediaRecorder;
+        let videoEnabled = true;
+        let audioEnabled = true;
+
+        async function startInterview() {
+            // Access video and audio streams
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            videoElement.srcObject = stream;
+
+            videoStream = stream.getVideoTracks()[0];
+            audioStream = stream.getAudioTracks()[0];
+
+            // Start recording video/audio
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+
+            // Send video chunks in real-time
+            mediaRecorder.ondataavailable = (event) =>
+            {
+                const formData = new FormData();
+                formData.append('interview_recording', event.data);
+
+                fetch('/interview', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error('Error:', error));
+            };
+
+            // Audio extraction every 5 seconds
+            setInterval(() => {
+                const audioBlob = new Blob([audioStream], { type: 'audio/webm' });
+                const audioFormData = new FormData();
+                audioFormData.append('audio_recording', audioBlob);
+
+                fetch('/interview/audio', {
+    method: 'POST',
+    body: audioFormData
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error('Network response was not ok');
+    }
+    return response.json();
+})
+.then(data => {
+    console.log("Audio processed", data);
+    if (data.predictions) {
+        console.log("Predictions:", data.predictions);  // This should show the predictions
+    } else {
+        console.error("No predictions returned:", data);
+    }
+})
+.catch(error => console.error('Audio Error:', error));
+}, 5000); // Sends audio every 5 seconds
+        }
+
+        // Toggle video on/off
+        document.getElementById('toggle-video').addEventListener('click', () => {
+            videoEnabled = !videoEnabled;
+            videoStream.enabled = videoEnabled;
+            document.getElementById('toggle-video').textContent = videoEnabled ? 'Turn Video Off' : 'Turn Video On';
+        });
+
+        // Toggle audio on/off
+        document.getElementById('toggle-audio').addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            audioStream.enabled = audioEnabled;
+            document.getElementById('toggle-audio').textContent = audioEnabled ? 'Turn Audio Off' : 'Turn Audio On';
+        });
+
+        // Start interview automatically when page loads
+        window.onload = startInterview;
+    </script>
+</body>
+</html>

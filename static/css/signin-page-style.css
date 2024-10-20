@@ -1,0 +1,132 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    height: 100vh;
+    /* border: 2px solid red; */
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: linear-gradient(
+    to bottom right,
+    #081e20,
+    #1a3c3f,
+    #2c5a5d,
+    #387478
+  );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-container {
+    display: flex;
+    justify-content: space-around;
+    /* border: 2px solid red; */
+    background-color: #eeeeee;
+    border-radius: 20px;
+}
+
+#signin-image {
+    width: 400px;
+    height: 100%;
+    border-radius: 20px 0 0 20px;
+    /* border: 2px solid red; */
+}
+
+.auth-form {
+    width: 400px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* justify-content: center; */
+    /* border: 1px solid red; */
+}
+
+h1 {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    text-align: center;
+    font-size: 36px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 80%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+#signin-button {
+    background-color: #387478;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 80%;
+    font-size: 16px;
+    margin-top: 15px;
+}
+
+.separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin: 20px 0;
+    width: 80%;
+}
+
+.direct-logins{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+}
+
+.direct-login-logo{
+    width: 20px;
+    margin-right: 8px;
+}
+
+.direct-login-button{
+    width: 100%;
+    padding: 8px 20px;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    /* border-radius: 5px; */
+}
+
+.separator::before,
+.separator::after {
+content: '';
+flex: 1;
+border-bottom: 1px solid #ccc;
+}
+
+.separator span {
+padding: 0 10px;
+}
+
+#switch{
+    margin-top: 14px;
+    font-size: 16px;
+    color: #444;
+}
+
+#signup-link{
+    color: #387478;
+}
